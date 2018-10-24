@@ -1,4 +1,6 @@
 #include <LiquidCrystal.h>
+#include <EEPROM.h>
+int eeprom_addr = 0;
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7); // select the pins used on the LCD panel
 // define some values used by the panel and buttons
 int lcd_key = 0;
@@ -87,25 +89,47 @@ char* user_select() {
 
 int play_game() {
   lcd.clear();
-  int start_time = millis();
-  int time_remaining;
+  lcd.setCursor(0,0);
+  lcd.print("Starting in 3...");
+  delay(1000);
+  lcd.setCursor(0,0);
+  lcd.print("Starting in 2...");
+  delay(1000);
+  lcd.setCursor(0,0);
+  lcd.print("Starting in 1...");
+  delay(1000);
+  
+  lcd.clear();
+  unsigned long start_time = millis();
+  unsigned long time_remaining = 0;
   int numPresses = 0;
   bool buttonUp = true;
   /* Button press detection: 
-  - buttonUp is true iutton is up
+  - buttonUp is true if button is up
   - When button is depressed (READ = LO), buttonUp is set to False
     - numPresses is iterated here
   - When button is let up again (READ = HI), buttonUp is set to True
   - Now, it has another opportunity to be set False again the next
     time the button is detected to be read. 
   */
+  Serial.println("Play Game");
+  Serial.println(millis());
+  Serial.println(start_time);
+  Serial.println("Entering Loop");
+  
   while(millis() - start_time < GAME_TIME*1000) {
+    Serial.print("Current Time: ");
+    Serial.println(millis());
+    Serial.print("Start Time  : ");
+    Serial.println(start_time);
+    
     lcd.setCursor(0,0); // move to the begining of the first line
     lcd.print("PUSH THE BUTTON!");
 
     lcd.setCursor(0,1); // move to the begining of the second line
     lcd.print(numPresses);
 
+    //delay(1000);
     if (buttonUp) { // look for when the button is depressed
       if (digitalRead(inputPin) == LOW) {
         buttonUp = false;
@@ -130,7 +154,8 @@ int play_game() {
   return numPresses;
 }
 
-void display_score(int score, char* hiUser, int hiScore) {
+void display_score(int score, char* hiUser) {
+  hiScore = EEPROM.read(eeprom_addr);
   lcd.clear();
   lcd.setCursor(5,0);
   lcd.print("TIME!!");
@@ -151,7 +176,7 @@ void display_score(int score, char* hiUser, int hiScore) {
     lcd.setCursor(13,1);
     lcd.print(hiScore);
   } // leave when the button is pressed
-  
+  delay(200);
 }
 
 // ------
@@ -167,6 +192,13 @@ void setup(){
   hiUser = new char[4];
   hiUser = "    ";
   hiScore = 0;
+
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+
+  Serial.println("Serial Port Connected");
 }
 
 void loop(){
@@ -174,9 +206,9 @@ void loop(){
   //user = user_select();
   int score = play_game();
   if (score > hiScore) {
-    hiUser = user;
-    hiScore = score;
+    //hiUser = user;
+    EEPROM.write(eeprom_addr, score);
   }
-  display_score(score, hiUser, hiScore);
+  display_score(score, hiUser);
 }
 
